@@ -1,12 +1,22 @@
 #!/bin/bash
-trap "echo 'received SIGINT. Quitting.'; exit" SIGINT
+CMD=$@
+if [[ -z ${CMD} ]]; then
+	trap "echo 'received SIGINT. Quitting.'; exit" SIGINT
+else
+	trap "echo 'received SIGINT. Quitting then running command ${CMD}'; ${CMD}; exit" SIGINT
+fi
 
 function parse_j6_device() {
 	local devices
 	devices=$(amidi -l | tail -n +2)
-	if [[ -n ${devices} && ${devices} =~ "J-6 MIDI OUT"$ ]]; then
-		echo "${devices}" | awk '{ print $2; }'
+	if [[ -z ${devices} ]]; then
+		return 0
 	fi
+	while IFS= read -r dev; do
+		if [[ "${dev}" =~ "J-6 MIDI OUT"$ ]]; then
+			echo "${dev}" | awk '{ print $2; }'
+		fi
+	done <<< "${devices}"
 }
 
 J6_DEV=""
