@@ -1,4 +1,5 @@
 #!/bin/bash
+
 CMD=$@
 if [[ -z ${CMD} ]]; then
 	trap "echo 'received SIGINT. Quitting.'; exit" SIGINT
@@ -23,7 +24,7 @@ J6_DEV=""
 while true; do
 	J6_DEV=$(parse_j6_device)
 	if [[ -n ${J6_DEV} ]]; then
-		echo "Found it. Dumping at: ${J6_DEV}"
+		echo "Found it. Dumping: ${J6_DEV}"
 		amidi -p "${J6_DEV}" --dump
 	fi
 	sleep 0.5
