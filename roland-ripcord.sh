@@ -23,11 +23,11 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-CMD=$@
+CMD=$*
 if [[ -z ${CMD} ]]; then
 	trap "echo 'received SIGINT. Quitting.'; exit" SIGINT
 else
-	trap "echo 'received SIGINT. Quitting then running command ${CMD}'; ${CMD}; exit" SIGINT
+	trap "echo 'received SIGINT. Quitting then running command \"${CMD}\".'; ${CMD}; exit" SIGINT
 fi
 
 function parse_j6_device() {
