@@ -22,7 +22,7 @@ The J-6 interface is 20:0 and the MIDI through device is `14:0`.
 When the device connects it will state that it's dumping the information from
 the device, and at that point hit `Ctrl-C` to get the auto-connect to happen.
 
-If you're just doing some debugging you can ommit the commands following the
+If you're just doing some debugging you can omit the commands following the
 script.
 
 ## Disclaimers
