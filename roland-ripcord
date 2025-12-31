@@ -1,0 +1,114 @@
+#!/usr/bin/python3
+# Copyright (c) 2025 Andrew Davies, All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1- Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+# 
+# 2- Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+import subprocess
+import signal
+import sys
+import time
+
+from subprocess import DEVNULL, PIPE
+
+def signal_handler(sig, frame) -> None:
+    print("received SIGINT. Quitting.")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+
+def run(*args) -> map:
+    """Runs a command. Returns an iterator for each line as a string."""
+    return map(str, subprocess.check_output(args).splitlines())
+
+def fatal(*args):
+    print(*args, file=sys.stderr)
+    sys.exit(1)
+
+def get_second_elmnt(line: str) -> str:
+    return line.split()[1]
+
+def find_matching_line(pat: str, *cmd) -> str | None:
+    """Looks for the first occurrence of the string 'pat' in the cmd output"""
+    lines = run(*cmd)
+    for line in lines:
+        if pat in line:
+            return get_second_elmnt(line)
+    return None
+
+def find_j6_hw() -> str | None:
+    return find_matching_line("J-6 MIDI OUT", "amidi", "-l")
+
+def find_j6_aconnect_port() -> str | None:
+    res = find_matching_line("J-6", "aconnect", "-i")
+    if res:
+        res = res.replace(":", "")
+        return f"{res}:0"
+    else:
+        return None
+
+def find_midi_through_aconnect_port() -> str | None:
+    res = find_matching_line("Midi Through", "aconnect", "-o")
+    if not res:
+        fatal("Could not find midi through device")
+    res = res.replace(":", "")
+    return f"{res}:0"
+
+def connect_j6_device_to_midi_through(j6_hw: str, midi_through_port: str) -> None:
+    """Connects j6 to midi through port."""
+    print(f"Found at: {j6_hw}")
+    print("Verifying liveness.", end="", flush=True)
+    args = ["amidi", "-p", j6_hw, "-c", "--dump"]
+    clocks_counted = 0
+    with subprocess.Popen(args, stdout=PIPE, stderr=DEVNULL) as proc:
+		# Occasionally we can expect CF 00 (I believe this is
+		# program-change channel 16 to 0?).
+		# According to https://midi.org/expanded-midi-1-0-messages-list
+        #
+        # But since this isn't consistent, just read a few clocks and call it
+        # a day.
+        while line := proc.stdout.readline():
+            if "F8" in str(line):
+                clocks_counted += 1
+                print(".", end="", flush=True)
+            if clocks_counted == 10:
+                break
+    print("", flush=True)
+    j6_port = find_j6_aconnect_port()
+    if j6_port is None or clocks_counted < 10:
+        print("Could not connect device. Waiting again.", file=sys.stderr)
+    else:
+        print(f"Connecting {j6_port} to {midi_through_port}")
+        run("aconnect", j6_port, midi_through_port)
+        sys.exit(0)
+
+def main():
+    # Just want to fail fast if we can't find the midi through device.
+    midi_through_port = find_midi_through_aconnect_port()
+    print("Waiting to connect J-6 device to MIDI-through (Press Ctrl-C to exit)")
+    while True:
+        j6_hw = find_j6_hw()
+        if j6_hw:
+            connect_j6_device_to_midi_through(j6_hw, midi_through_port)
+        time.sleep(0.5)
+
+if __name__ == "__main__":
+    main()
