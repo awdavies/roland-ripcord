@@ -10,20 +10,17 @@ from the device the moment it boots/registers.
 
 ## Usage
 
-Just run the bash script with the MIDI connect command for connecting the J-6 to
-your MIDI through device. For me this looks like:
+Just run the script like so:
 
 ```bash
-bash ./roland-ripcord.sh aconnect 20:0 14:0
+chmod 750 roland-ripcord
+./roland-ripcord
 ```
 
-The J-6 interface is 20:0 and the MIDI through device is `14:0`.
-
-When the device connects it will state that it's dumping the information from
-the device, and at that point hit `Ctrl-C` to get the auto-connect to happen.
-
-If you're just doing some debugging you can omit the commands following the
-script.
+When the device connects it will state that it's verifying liveness. Once
+enough clock messages are sent, it'll autoconnect to whatever the MIDI through
+device is on your system (it's assuming there is only one with a hardcoded name
+based purely off of my own setup).
 
 ## Disclaimers
 
